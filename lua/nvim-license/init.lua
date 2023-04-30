@@ -53,14 +53,15 @@ function M.setup(opts)
 		-- otherwise, we error
 		local function get_project_name()
 			local proc = io.popen("git rev-parse --show-toplevel", "r")
-
+      
 			local project_path = proc:read("a")
 			local success = proc:close()
 
 			if success then
 				return vim.fs.basename(project_path)
 			else
-				return nil
+        vim.api.nvim_err_writeln("Failed to determine a project name from a git repository, please make a PROJECT file, containing the name of the project")
+				return "<unknown>"
 			end
 		end
 		configuration.project = get_project_name
@@ -97,6 +98,9 @@ end
 
 local function rewrite_as_comment(str)
 	local comment_fmt = vim.api.nvim_buf_get_option(0, "commentstring")
+  if comment_fmt == "" or comment_fmt == nil then
+    return str
+  end
 	local lines = vim.split(str, "\n")
 
 	local final_text = ""
@@ -108,7 +112,7 @@ local function rewrite_as_comment(str)
 end
 
 function M.create_license(name)
-	local license_text = template.make_header(name, resolve_config())
+	local license_text = template.make_license(name, resolve_config())
 
 	if license_text == nil then
 		return nil
@@ -164,6 +168,7 @@ local function create_commands()
 		local license_text = M.create_header(args.args)
 		if license_text == nil then
 			vim.api.nvim_err_writeln("Unrecognized header type: " .. args.args)
+      return nil
 		end
 		license_text = rewrite_as_comment(license_text)
 		vim.api.nvim_put(vim.split(license_text, "\n"), "l", true, true)
@@ -179,15 +184,6 @@ local function create_commands()
 	end)
 end
 
--- M.cmd = {
---   "License",
---   "LicenseHeader"
--- }
-
-function M.cmd(d)
-  print("CMD")
-  print(vim.inspect(d))
-end
 
 create_commands()
 return M

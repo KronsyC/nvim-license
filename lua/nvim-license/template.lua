@@ -40,7 +40,7 @@ local function licenses()
     lc["path"] = file
     lc["header"] = nil
     if #vim.api.nvim_get_runtime_file(TEMPLATE_PATH..name.."-header.txt", true) ~= 0 then
-      lc["header"] = TEMPLATE_PATH..name.."-header.txt"
+      lc["header"] = vim.fs.dirname(file) .. "/" .. name .. "-header.txt"
     end
 
     LICENSES[name] = lc
@@ -78,7 +78,6 @@ end
 
 local function make_header(name, options)
   local license = licenses()[name]
-
   if license == nil then
     return nil
   end
