@@ -97,18 +97,37 @@ local function command(name, description, argcnt, callback, complete)
 end
 
 local function rewrite_as_comment(str)
+  -- First search in the comments option for single-line definition
+  -- If that fails, fallback to commentstring
 	local comment_fmt = vim.api.nvim_buf_get_option(0, "comments")
-  if comment_fmt == "" or comment_fmt == nil then
-    return str
+  local parts = vim.split(comment_fmt, ",")
+  local single_line_parts = {}
+
+  for _, p in pairs(parts) do
+    if vim.startswith(p, ":") then
+      single_line_parts[#single_line_parts+1] = p:sub(2)
+    end
   end
-	local lines = vim.split(str, "\n")
 
-	local final_text = ""
+  local lines = vim.split(str, "\n")
+  if #single_line_parts ~= 0 then
+    local ret = ""
 
-	for _, text in pairs(lines) do
-		final_text = comment_fmt..text .."\n"
-	end
-	return final_text
+    for _, l in pairs(lines) do
+      ret = ret .. single_line_parts[1] .. " " .. l .. "\n"
+    end
+    return ret
+  else
+    -- Fall back to commentstring substitution
+    local commentstr = vim.api.nvim_buf_get_option(0, "commentstring")
+    if commentstr == nil or commentstr == "" then
+      return str
+    end
+    local ret = commentstr:gsub("%%s", "\n"..str)
+
+    return ret
+  end
+
 end
 
 function M.create_license(name)
