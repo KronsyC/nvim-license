@@ -106,7 +106,7 @@ local function rewrite_as_comment(str)
 	local final_text = ""
 
 	for _, text in pairs(lines) do
-		final_text = final_text .. string.gsub(comment_fmt, "%%s", text) .. "\n"
+		final_text = comment_fmt..text .."\n"
 	end
 	return final_text
 end
