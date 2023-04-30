@@ -97,7 +97,7 @@ local function command(name, description, argcnt, callback, complete)
 end
 
 local function rewrite_as_comment(str)
-	local comment_fmt = vim.api.nvim_buf_get_option(0, "commentstring")
+	local comment_fmt = vim.api.nvim_buf_get_option(0, "comments")
   if comment_fmt == "" or comment_fmt == nil then
     return str
   end
