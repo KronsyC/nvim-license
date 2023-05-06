@@ -1,15 +1,15 @@
 -- Copyright (c) 2023 Samir Bioud
--- 
+--
 -- Permission is hereby granted, free of charge, to any person obtaining a copy
 -- of this software and associated documentation files (the "Software"), to deal
 -- in the Software without restriction, including without limitation the rights
 -- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 -- copies of the Software, and to permit persons to whom the Software is
 -- furnished to do so, subject to the following conditions:
--- 
+--
 -- The above copyright notice and this permission notice shall be included in all
 -- copies or substantial portions of the Software.
--- 
+--
 -- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 -- EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 -- MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -17,11 +17,9 @@
 -- DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
 -- OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE
 -- OR OTHER DEALINGS IN THE SOFTWARE.
--- 
-
+--
 
 local template = require("nvim-license.template")
-
 
 local M = {}
 
@@ -32,6 +30,25 @@ local configuration = {
 		return nil
 	end,
 }
+
+local function proc(a)
+	local exit = os.execute(a)
+
+	if exit ~= 0 then
+		return nil
+	end
+	local p = io.popen(a)
+	local content = p:read("*a"):gsub("^%s*(.-)%s*$", "%1")
+	return content
+end
+
+local function git_config(vname)
+	return proc("git config --get " .. vname)
+end
+
+local function git_repo_name()
+	return proc("git rev-parse --show-toplevel")
+end
 
 function M.setup(opts)
 	if opts.year then
@@ -49,19 +66,20 @@ function M.setup(opts)
 	if opts.project then
 		configuration.project = opts.project
 	else
-		-- Try to get the name of the current git repo (if any) for the project
-		-- otherwise, we error
 		local function get_project_name()
-			local proc = io.popen("git rev-parse --show-toplevel", "r")
-      
-			local project_path = proc:read("a")
-			local success = proc:close()
-
-			if success then
-				return vim.fs.basename(project_path)
+			local configured_name = git_config("project.name")
+			if configured_name ~= nil then
+				return configured_name
 			else
-        vim.api.nvim_err_writeln("Failed to determine a project name from a git repository, please make a PROJECT file, containing the name of the project")
-				return "<unknown>"
+				local repo_name = git_repo_name()
+				if repo_name ~= nil then
+					return vim.fs.basename(repo_name)
+				else
+					vim.api.nvim_err_writeln(
+						"Failed to determine a project name from a git repository, please use `git config project.name <NAME>`"
+					)
+					return "<unknown>"
+				end
 			end
 		end
 		configuration.project = get_project_name
@@ -97,37 +115,36 @@ local function command(name, description, argcnt, callback, complete)
 end
 
 local function rewrite_as_comment(str)
-  -- First search in the comments option for single-line definition
-  -- If that fails, fallback to commentstring
+	-- First search in the comments option for single-line definition
+	-- If that fails, fallback to commentstring
 	local comment_fmt = vim.api.nvim_buf_get_option(0, "comments")
-  local parts = vim.split(comment_fmt, ",")
-  local single_line_parts = {}
+	local parts = vim.split(comment_fmt, ",")
+	local single_line_parts = {}
 
-  for _, p in pairs(parts) do
-    if vim.startswith(p, ":") then
-      single_line_parts[#single_line_parts+1] = p:sub(2)
-    end
-  end
+	for _, p in pairs(parts) do
+		if vim.startswith(p, ":") then
+			single_line_parts[#single_line_parts + 1] = p:sub(2)
+		end
+	end
 
-  local lines = vim.split(str, "\n")
-  if #single_line_parts ~= 0 then
-    local ret = ""
+	local lines = vim.split(str, "\n")
+	if #single_line_parts ~= 0 then
+		local ret = ""
 
-    for _, l in pairs(lines) do
-      ret = ret .. single_line_parts[1] .. " " .. l .. "\n"
-    end
-    return ret
-  else
-    -- Fall back to commentstring substitution
-    local commentstr = vim.api.nvim_buf_get_option(0, "commentstring")
-    if commentstr == nil or commentstr == "" then
-      return str
-    end
-    local ret = commentstr:gsub("%%s", "\n"..str)
+		for _, l in pairs(lines) do
+			ret = ret .. single_line_parts[1] .. " " .. l .. "\n"
+		end
+		return ret
+	else
+		-- Fall back to commentstring substitution
+		local commentstr = vim.api.nvim_buf_get_option(0, "commentstring")
+		if commentstr == nil or commentstr == "" then
+			return str
+		end
+		local ret = commentstr:gsub("%%s", "\n" .. str)
 
-    return ret
-  end
-
+		return ret
+	end
 end
 
 function M.create_license(name)
@@ -150,7 +167,52 @@ function M.create_header(name)
 	return license_text
 end
 
+function M.fetch_raw_license(name)
+	local lc = template.licenses()[name]
+
+	if lc == nil then
+		return nil
+	end
+	return template.read(lc.path)
+end
+
+function M.fetch_raw_header(name)
+	local lc = template.licenses()[name]
+
+  if lc.header == nil then
+    return nil
+  end
+
+  return template.read(lc.header)
+end
+
+function M.autolicense()
+	local license_type = git_config("project.license"):lower()
+
+	if license_type == nil then
+		vim.api.nvim_err_writeln(
+			"Autolicense features do not work without first setting the license variable using `git config project.license <LICENSE>`"
+		)
+		return nil
+	end
+
+	local content = M.create_header(license_type)
+
+	if content == nil then
+		vim.api.nvim_err_writeln("The configured project license type '" .. license_type .. "' is not recognized")
+		return nil
+	end
+
+	return content
+end
+
 M.commentify = rewrite_as_comment
+
+local function write(text)
+	local line = vim.api.nvim_win_get_cursor(0)[1]
+
+	vim.api.nvim_buf_set_lines(0, line, line, false, vim.split(text, "\n"))
+end
 
 local function create_commands()
 	-- Get a list of all licenses for autocomplete purposes
@@ -171,7 +233,7 @@ local function create_commands()
 			vim.api.nvim_err_writeln("Unrecognized license type: " .. args.args)
 			return
 		end
-		vim.api.nvim_put(vim.split(license_text, "\n"), "l", true, true)
+		write(license_text)
 	end, function(arg)
 		local matches = {}
 
@@ -187,10 +249,10 @@ local function create_commands()
 		local license_text = M.create_header(args.args)
 		if license_text == nil then
 			vim.api.nvim_err_writeln("Unrecognized header type: " .. args.args)
-      return nil
+			return nil
 		end
 		license_text = rewrite_as_comment(license_text)
-		vim.api.nvim_put(vim.split(license_text, "\n"), "l", true, true)
+		write(license_text)
 	end, function(arg)
 		local matches = {}
 
@@ -201,8 +263,17 @@ local function create_commands()
 		end
 		return matches
 	end)
+
+	command("AutoLicense", "infer a license to insert to the file based on git config", 0, function()
+		local license_text = M.autolicense()
+		if license_text == nil then
+			return
+		end
+		license_text = rewrite_as_comment(license_text)
+		write(license_text)
+	end)
 end
 
-
 create_commands()
+
 return M

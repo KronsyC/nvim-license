@@ -51,15 +51,26 @@ local function licenses()
   return LICENSES
 end
 
-local function open_and_substitute(path, options)
+local function read(path)
   local f = io.open(path, "r")
+
   if f == nil then
     vim.api.nvim_err_writeln("Failed to read path: " .. path)
     return nil
   end
+
   local data = f:read("a")
-  data = data:gsub("{{ year }}", options["year"]):gsub("{{ organization }}", options["author"]):gsub("{{ project }}", options["project"])
+
   f:close()
+  return data
+end
+local function open_and_substitute(path, options)
+  local data = read(path)
+
+  if data == nil then return nil end
+  data = data:gsub("{{ year }}", options["year"])
+             :gsub("{{ organization }}", options["author"])
+             :gsub("{{ project }}", options["project"])
   return data
 
 
