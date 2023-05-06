@@ -187,7 +187,7 @@ function M.fetch_raw_header(name)
 end
 
 function M.autolicense()
-	local license_type = git_config("project.license"):lower()
+	local license_type = git_config("project.license")
 
 	if license_type == nil then
 		vim.api.nvim_err_writeln(
@@ -196,7 +196,7 @@ function M.autolicense()
 		return nil
 	end
 
-	local content = M.create_header(license_type)
+	local content = M.create_header(license_type:lower())
 
 	if content == nil then
 		vim.api.nvim_err_writeln("The configured project license type '" .. license_type .. "' is not recognized")
