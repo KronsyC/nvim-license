@@ -121,7 +121,9 @@ local function rewrite_as_comment(str)
 	local parts = vim.split(comment_fmt, ",")
 	local single_line_parts = {}
 
+	-- parse the comments info
 	for _, p in pairs(parts) do
+		-- The comment text that we want always starts with a colon character
 		if vim.startswith(p, ":") then
 			single_line_parts[#single_line_parts + 1] = p:sub(2)
 		end
@@ -129,6 +131,7 @@ local function rewrite_as_comment(str)
 
 	local lines = vim.split(str, "\n")
 	if #single_line_parts ~= 0 then
+		-- Do a linewise substitution of the comment pattern
 		local ret = ""
 
 		for _, l in pairs(lines) do
@@ -141,9 +144,22 @@ local function rewrite_as_comment(str)
 		if commentstr == nil or commentstr == "" then
 			return str
 		end
-		local ret = commentstr:gsub("%%s", "\n" .. str)
 
-		return ret
+		local end_idx = commentstr:find("%%s") + 2
+
+		if end_idx == #commentstr then
+			-- line-wise comment, per-line substitution
+
+			local ret = ""
+			for _, l in pairs(lines) do
+				ret = ret .. commentstr:gsub("%%s", l) .. "\n"
+			end
+		else
+			-- block-style comment, full substitution
+			local ret = commentstr:gsub("%%s", "\n" .. str)
+
+			return ret
+		end
 	end
 end
 
@@ -179,11 +195,11 @@ end
 function M.fetch_raw_header(name)
 	local lc = template.licenses()[name]
 
-  if lc.header == nil then
-    return nil
-  end
+	if lc.header == nil then
+		return nil
+	end
 
-  return template.read(lc.header)
+	return template.read(lc.header)
 end
 
 function M.autolicense()

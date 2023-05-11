@@ -2,26 +2,48 @@
 
 ### A Simple neovim plugin for generating license files and headers
 
+## Installation
+
+- `lazy.vim`
+
+  ```lua
+  {
+    "KronsyC/nvim-license",
+       opts = function()
+          return {
+             name = "YOUR_USERNAME",
+             -- Optional
+             -- year = "2023"
+          }
+    end,
+
+    cmd = {
+            "License",
+            "LicenseHeader",
+            "AutoLicense"
+        }
+
+  }
+  ```
+
 ## Configuration
 
-The module exposes a simple `setup({options})` function to configure it.   
+The module exposes a simple `setup({options})` function to configure it.
 
-`options: `   
+`options: `
 
 - `name : string` - The name to put on all licenses (default: username)
 - `year : number` - The year for which the licenses should be addresses (default: current year)
-- `project: string|func` - The name of the project, or a function to determine the name of the project (default: `git config project.name` or `<REPO_NAME>`) 
-
+- `project: string|func` - The name of the project, or a function to determine the name of the project (default: `git config project.name` or `<REPO_NAME>`)
 
 ## Commands
 
-- **License** *{name}* - Write the provided license at the cursor
+- **License** _{name}_ - Write the provided license at the cursor
 
-- **LicenseHeader** *{name}* - Write the provided license header at the cursor, as a comment.   
-note: not all licenses have a corresponding header
+- **LicenseHeader** _{name}_ - Write the provided license header at the cursor, as a comment.  
+  note: not all licenses have a corresponding header
 
 - **AutoLicense** - Automatically injects a license header, the license used is determined by `git config project.license`
-
 
 ## Lua API functions
 
@@ -35,9 +57,8 @@ note: not all licenses have a corresponding header
 
 - `commentify({text})` - Rewrite `text` as a comment for the current buffer's filetype
 
-- `fetch_raw_license({name})` - Fetch the raw, templated text of a license 
+- `fetch_raw_license({name})` - Fetch the raw, templated text of a license
 
 - `fetch_raw_header({name})` - Fetch the raw, templated text of a header
 
 ### A special thank you to to [licenses/license-templates](https://github.com/licenses/license-templates) for providing the templates used by the plugin
-
