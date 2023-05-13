@@ -7,7 +7,7 @@
 -- copies of the Software, and to permit persons to whom the Software is
 -- furnished to do so, subject to the following conditions:
 --
--- The above copyright notice and this permission notice shall be included in all
+-- The above copyright notice and this neovim create commented textpermission notice shall be included in all
 -- copies or substantial portions of the Software.
 --
 -- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
@@ -20,7 +20,7 @@
 --
 
 local template = require("nvim-license.template")
-
+local make_comment = require("nvim-license.commentify")
 local M = {}
 
 local configuration = {
@@ -114,55 +114,6 @@ local function command(name, description, argcnt, callback, complete)
 	})
 end
 
-local function rewrite_as_comment(str)
-	-- First search in the comments option for single-line definition
-	-- If that fails, fallback to commentstring
-	local comment_fmt = vim.api.nvim_buf_get_option(0, "comments")
-	local parts = vim.split(comment_fmt, ",")
-	local single_line_parts = {}
-
-	-- parse the comments info
-	for _, p in pairs(parts) do
-		-- The comment text that we want always starts with a colon character
-		if vim.startswith(p, ":") then
-			single_line_parts[#single_line_parts + 1] = p:sub(2)
-		end
-	end
-
-	local lines = vim.split(str, "\n")
-	if #single_line_parts ~= 0 then
-		-- Do a linewise substitution of the comment pattern
-		local ret = ""
-
-		for _, l in pairs(lines) do
-			ret = ret .. single_line_parts[1] .. " " .. l .. "\n"
-		end
-		return ret
-	else
-		-- Fall back to commentstring substitution
-		local commentstr = vim.api.nvim_buf_get_option(0, "commentstring")
-		if commentstr == nil or commentstr == "" then
-			return str
-		end
-
-		local end_idx = commentstr:find("%%s") + 2
-
-		if end_idx == #commentstr then
-			-- line-wise comment, per-line substitution
-
-			local ret = ""
-			for _, l in pairs(lines) do
-				ret = ret .. commentstr:gsub("%%s", l) .. "\n"
-			end
-		else
-			-- block-style comment, full substitution
-			local ret = commentstr:gsub("%%s", "\n" .. str)
-
-			return ret
-		end
-	end
-end
-
 function M.create_license(name)
 	local license_text = template.make_license(name, resolve_config())
 
@@ -222,7 +173,7 @@ function M.autolicense()
 	return content
 end
 
-M.commentify = rewrite_as_comment
+M.commentify = make_comment
 
 local function write(text)
 	local line = vim.api.nvim_win_get_cursor(0)[1]
@@ -267,7 +218,7 @@ local function create_commands()
 			vim.api.nvim_err_writeln("Unrecognized header type: " .. args.args)
 			return nil
 		end
-		license_text = rewrite_as_comment(license_text)
+		license_text = make_comment(license_text)
 		write(license_text)
 	end, function(arg)
 		local matches = {}
@@ -285,7 +236,7 @@ local function create_commands()
 		if license_text == nil then
 			return
 		end
-		license_text = rewrite_as_comment(license_text)
+		license_text = make_comment(license_text)
 		write(license_text)
 	end)
 end

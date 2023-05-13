@@ -2,6 +2,10 @@
 
 ### A Simple neovim plugin for generating license files and headers
 
+## Dependencies
+
+- `numToStr/Comment.nvim`
+
 ## Installation
 
 - `lazy.vim`
@@ -21,7 +25,10 @@
             "License",
             "LicenseHeader",
             "AutoLicense"
-        }
+        },
+    dependencies = {
+        {"numToStr/Comment.nvim"}        
+    } 
 
   }
   ```
@@ -55,7 +62,7 @@ The module exposes a simple `setup({options})` function to configure it.
 
 - `autolicense()` - Fetch whichever license is inferred to be in use by the project
 
-- `commentify({text})` - Rewrite `text` as a comment for the current buffer's filetype
+- `commentify({text})` - Rewrite `text` as a comment for the current buffer's filetype (uses `Comment.nvim`)
 
 - `fetch_raw_license({name})` - Fetch the raw, templated text of a license
 
